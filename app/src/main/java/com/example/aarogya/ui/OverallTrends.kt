@@ -84,6 +84,7 @@ fun LazyListScope.overallItems(ui: OverallUi) {
     }
     item(key = "o-dow") { ChartCard("Intake by day of week", "average kcal on days with food logged") { WeekdayBars(o.byWeekday) } }
     if (ui.byCategory.isNotEmpty()) item(key = "o-types") { ChartCard("By food type", "share of all logged calories") { FoodTypes(ui.byCategory) } }
+    if (ui.activities.isNotEmpty()) item(key = "o-acts") { ChartCard("Activities", "calories burned by activity, all time") { Activities(ui.activities) } }
     if (ui.mealTotals.isNotEmpty()) item(key = "o-meals") { ChartCard("Where calories come from", "share of all logged calories") { MealShares(ui.mealTotals) } }
     if (ui.topFoods.isNotEmpty()) item(key = "o-foods") { ChartCard("Top foods", "by total calories") { TopFoods(ui.topFoods) } }
     item(key = "o-table-h") { SectionTitle("Weekly table", "in · out · net") }
@@ -293,6 +294,12 @@ private fun MealShares(totals: Map<Meal, Double>) {
 private fun FoodTypes(byCategory: List<Pair<com.example.aarogya.data.FoodCategory, Double>>) {
     val sum = byCategory.sumOf { it.second }.coerceAtLeast(1.0)
     byCategory.forEach { (c, v) -> BarRow(c.label, (v / sum).toFloat(), "${(v / sum * 100).roundToInt()}% · ${v.kcal()}") }
+}
+
+@Composable
+private fun Activities(stats: List<com.example.aarogya.data.ActivityStat>) {
+    val max = stats.maxOf { it.kcal }.coerceAtLeast(1.0)
+    stats.take(8).forEach { a -> BarRow(a.name, (a.kcal / max).toFloat(), "${a.kcal.kcal()} · ${a.sessions}×") }
 }
 
 @Composable

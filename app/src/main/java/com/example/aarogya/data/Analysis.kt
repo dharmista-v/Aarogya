@@ -100,7 +100,9 @@ object Analyzer {
         }
 
         if (whoopWorkouts.isNotEmpty()) {
-            out += "WHOOP workouts: " + whoopWorkouts.joinToString { "${it.sport} ${it.kcal.n()} kcal" } + " (already in WHOOP's total)."
+            out += "WHOOP activities: " + whoopWorkouts.joinToString { w ->
+                w.sport + (w.minutes?.let { " ($it min)" } ?: "") + " ${w.kcal.n()} kcal"
+            } + " (already in WHOOP's total)."
         }
         if (active == 0.0 && whoop == null) out += "No activity logged — even a 30-min walk burns about 120–150 kcal."
         return base.copy(insights = out)

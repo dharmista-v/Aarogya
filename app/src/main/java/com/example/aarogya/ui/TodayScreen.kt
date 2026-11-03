@@ -227,7 +227,13 @@ private fun WhoopWorkoutRow(w: WhoopWorkout) {
             }
         },
         title = w.sport,
-        subtitle = "WHOOP · $time" + (w.strain?.let { " · strain ${"%.1f".format(it)}" } ?: "") + " · in WHOOP total",
+        subtitle = listOfNotNull(
+            "WHOOP · $time",
+            w.minutes?.let { "$it min" },
+            w.distanceMeters?.let { "%.1f km".format(it / 1000) },
+            w.avgHeartRate?.let { "avg HR $it" },
+            w.strain?.let { "strain ${"%.1f".format(it)}" },
+        ).joinToString(" · "),
         kcal = w.kcal.kcal(),
         onDelete = null,
     )

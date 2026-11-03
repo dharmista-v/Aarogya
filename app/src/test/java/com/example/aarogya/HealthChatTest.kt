@@ -56,6 +56,23 @@ class HealthChatTest {
         assertTrue(!HealthChat.context(snapshot(weights = null)).contains("72.4"))
     }
 
+    @Test fun activitiesFromWhoopAndLogged() {
+        val s = snapshot().copy(
+            activities = listOf(
+                com.example.aarogya.data.ActivityLine(today.minusDays(2), "Walking", 180.0, 40, fromWhoop = true),
+                com.example.aarogya.data.ActivityLine(today, "Badminton", 410.0, 52, fromWhoop = true),
+                com.example.aarogya.data.ActivityLine(today, "walking", 120.0, null, fromWhoop = false),
+            ),
+        )
+        assertEquals(
+            "Activities in the last 7 days: Badminton 410 kcal over 52 min on Sun; Walking 300 kcal over 40 min on Fri/Sun. Total 710 kcal. WHOOP activities are already part of WHOOP's daily burn.",
+            HealthChat.answer("What activities did I do?", s),
+        )
+        assertTrue(HealthChat.answer("how much did I exercise today", s)!!.startsWith("Activities today: Badminton 410 kcal over 52 min; walking 120 kcal."))
+        assertTrue(HealthChat.answer("what should I eat after my workout", s)!!.startsWith("You have 1,480 kcal left"))
+        assertEquals("No activities recorded in the last 7 days. Connect WHOOP or add an activity on the Day screen.", HealthChat.answer("any workouts?", snapshot()))
+    }
+
     @Test fun openQuestionsGoToTheLlm() {
         assertNull(HealthChat.answer("Is it okay to skip breakfast?", snapshot()))
         assertNull(HealthChat.answer("Tell me a fun fact", snapshot()))

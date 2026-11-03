@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.aarogya.data.ActivityStat
 import com.example.aarogya.data.Analyzer
 import com.example.aarogya.data.BurnEntry
 import com.example.aarogya.data.DayAnalysis
@@ -23,6 +24,7 @@ import com.example.aarogya.data.Portions
 import com.example.aarogya.data.QtyUnit
 import com.example.aarogya.data.FoodCategories
 import com.example.aarogya.data.FoodCategory
+import com.example.aarogya.data.ActivityLine
 import com.example.aarogya.data.HealthChat
 import com.example.aarogya.data.HealthSnapshot
 import com.example.aarogya.data.Prefs
@@ -88,6 +90,8 @@ data class OverallUi(
     val firstDay: LocalDate?,
     /** All-time calories per food type, largest first. */
     val byCategory: List<Pair<FoodCategory, Double>> = emptyList(),
+    /** All-time calories burned per activity (WHOOP workouts + logged activities). */
+    val activities: List<ActivityStat> = emptyList(),
 )
 
 /** An item on the plate being composed in the Add food sheet. */
@@ -221,7 +225,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .groupBy({ FoodCategories.categorize(it.name) }, { it.kcal })
             .map { (c, kcals) -> c to kcals.sum() }
             .sortedByDescending { it.second }
-        OverallUi(Analyzer.overall(days, s.restingBurn), store.mealTotals(), store.topFoods(8), first, byCategory)
+        OverallUi(Analyzer.overall(days, s.restingBurn), store.mealTotals(), store.topFoods(8), first, byCategory, store.activityTotals())
     }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun selectDay(d: LocalDate) { if (!d.isAfter(AppTime.today())) _day.value = d }
@@ -333,6 +337,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             byCategory = top.groupBy({ FoodCategories.categorize(it.name) }, { it.kcal }).map { (c, k) -> c to k.sum() }.sortedByDescending { it.second },
             weights = if (app.pinLock.unlocked.value) store.weights() else null,
             foodTable = foodDb.foods,
+            activities = (6 downTo 0).map { today.minusDays(it.toLong()) }.flatMap { d ->
+                store.whoopWorkouts(d).map { ActivityLine(d, it.sport, it.kcal, it.minutes, fromWhoop = true) } +
+                    store.burns(d).map { ActivityLine(d, it.name, it.kcal, null, fromWhoop = false) }
+            },
         )
     }
 

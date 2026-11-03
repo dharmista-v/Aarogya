@@ -26,7 +26,11 @@ data class HealthSnapshot(
     val weights: List<WeightEntry>?,
     /** Foods from the table, used to suggest what fits the remaining budget. */
     val foodTable: List<Food>,
+    /** Activities in the last 7 days (WHOOP workouts and logged activities), oldest first. */
+    val activities: List<ActivityLine> = emptyList(),
 )
+
+data class ActivityLine(val day: LocalDate, val name: String, val kcal: Double, val minutes: Int?, val fromWhoop: Boolean)
 
 /**
  * The chat's exact-answer engine. Common questions about the user's own numbers are answered
@@ -42,6 +46,7 @@ object HealthChat {
         return when {
             has(q, " weight", " weigh", " kg ", " lost ", " lose ", " gained ", " heavier", " lighter") -> weight(s)
             has(q, " what should i eat", " suggest", " recommend", " ideas", " what can i eat", " what to eat") -> suggest(s)
+            has(q, " activit", " workout", " exercise", " sport", " walk", " run", " gym", " badminton", " trained", " training", " active ") -> activities(q, s)
             has(q, " left ", " remaining", " how much more", " how many more", " can i still", " budget") -> remaining(s)
             has(q, " what did i eat", " what have i eaten", " what i ate", " my meals", " eaten today", " ate today", " list ") -> todaysFoods(s)
             has(q, " biggest", " most calories", " top food", " source", " main food", " eat the most", " eat most") -> biggest(s)
@@ -110,6 +115,24 @@ object HealthChat {
         return "Your calories by food type: " + s.byCategory.take(5).joinToString(", ") { (c, v) -> "${c.label} ${(v / total * 100).roundToInt()}%" } + "."
     }
 
+    private fun activities(q: String, s: HealthSnapshot): String {
+        val todayOnly = q.contains(" today")
+        val list = if (todayOnly) s.activities.filter { it.day == s.today } else s.activities
+        val period = if (todayOnly) "today" else "in the last 7 days"
+        if (list.isEmpty()) return "No activities recorded $period. Connect WHOOP or add an activity on the Day screen."
+        val fmt = DateTimeFormatter.ofPattern("EEE")
+        val byName = list.groupBy { it.name.lowercase() }.values
+            .map { group -> Triple(group.first().name, group.sumOf { it.kcal }, group) }
+            .sortedByDescending { it.second }
+        val details = byName.joinToString("; ") { (name, kcal, group) ->
+            val mins = group.mapNotNull { it.minutes }.sum()
+            val days = if (todayOnly) "" else " on " + group.map { it.day.format(fmt) }.distinct().joinToString("/")
+            "$name ${n(kcal)} kcal" + (if (mins > 0) " over $mins min" else "") + days
+        }
+        val note = if (list.any { it.fromWhoop }) " WHOOP activities are already part of WHOOP's daily burn." else ""
+        return "Activities $period: $details. Total ${n(list.sumOf { it.kcal })} kcal.$note"
+    }
+
     private fun weight(s: HealthSnapshot): String {
         val w = s.weights ?: return "Your weight is locked. Unlock the Weight tab with your PIN and ask again."
         if (w.isEmpty()) return "I don't have any weight readings yet — connect Google Health in the Weight tab."
@@ -152,6 +175,7 @@ object HealthChat {
         Analyzer.week(s.recent, s.restingBurn)?.let {
             appendLine("Last 7 days: average ate ${n(it.avgIn.toDouble())} kcal/day, burned ${n(it.avgOut.toDouble())} kcal/day, average ${if (it.avgNet <= 0) "deficit" else "surplus"} ${n(abs(it.avgNet).toDouble())} kcal/day.")
         }
+        if (s.activities.isNotEmpty()) appendLine("Activities in the last 7 days: " + s.activities.joinToString(", ") { "${it.name} ${n(it.kcal)} kcal" } + ".")
         if (s.topFoods.isNotEmpty()) appendLine("Most eaten foods: " + s.topFoods.take(5).joinToString(", ") { "${it.name} (${it.times} times)" } + ".")
         val total = s.byCategory.sumOf { it.second }
         if (total > 0) appendLine("Calories by food type: " + s.byCategory.take(4).joinToString(", ") { (c, v) -> "${c.label} ${(v / total * 100).roundToInt()}%" } + ".")

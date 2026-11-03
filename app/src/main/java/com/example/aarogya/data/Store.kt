@@ -63,7 +63,20 @@ data class BurnEntry(val id: Long = 0, val day: LocalDate, val time: Long, val n
 
 /** WHOOP's measured total burn for a day (from its cycle), and workouts it tracked. */
 data class WhoopDay(val day: LocalDate, val kcal: Double, val strain: Double?)
-data class WhoopWorkout(val id: String, val day: LocalDate, val start: Long, val sport: String, val kcal: Double, val strain: Double?)
+data class WhoopWorkout(
+    val id: String,
+    val day: LocalDate,
+    val start: Long,
+    val sport: String,
+    val kcal: Double,
+    val strain: Double?,
+    val minutes: Int? = null,
+    val avgHeartRate: Int? = null,
+    val distanceMeters: Double? = null,
+)
+
+/** All-time totals for one kind of activity (WHOOP workouts and logged activities combined). */
+data class ActivityStat(val name: String, val sessions: Int, val kcal: Double, val minutes: Int)
 
 /** One body-weight reading (from Google Health). [time] is epoch millis and identifies the reading. */
 data class WeightEntry(val time: Long, val day: LocalDate, val kg: Double, val source: String)
@@ -71,7 +84,7 @@ data class WeightEntry(val time: Long, val day: LocalDate, val kg: Double, val s
 data class DayTotals(val day: LocalDate, val kcalIn: Double, val kcalActive: Double, val whoopKcal: Double? = null)
 
 /** Tiny SQLite store; [version] ticks on every write so the UI can re-query. */
-class Store(context: Context) : SQLiteOpenHelper(context, "aarogya.db", null, 5) {
+class Store(context: Context) : SQLiteOpenHelper(context, "aarogya.db", null, 6) {
     private val _version = MutableStateFlow(0)
     val version: StateFlow<Int> = _version
 
@@ -90,6 +103,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "aarogya.db", null, 5)
         addClassificationColumns(db)
         db.execSQL("ALTER TABLE food ADD COLUMN suggestions TEXT")
         createWeightTable(db)
+        addWorkoutDetailColumns(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -97,7 +111,26 @@ class Store(context: Context) : SQLiteOpenHelper(context, "aarogya.db", null, 5)
         if (oldVersion < 3) addClassificationColumns(db)
         if (oldVersion < 4) db.execSQL("ALTER TABLE food ADD COLUMN suggestions TEXT")
         if (oldVersion < 5) createWeightTable(db)
+        if (oldVersion < 6) addWorkoutDetailColumns(db)
     }
+
+    private fun addWorkoutDetailColumns(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE whoop_workout ADD COLUMN minutes INTEGER")
+        db.execSQL("ALTER TABLE whoop_workout ADD COLUMN avg_hr INTEGER")
+        db.execSQL("ALTER TABLE whoop_workout ADD COLUMN distance_m REAL")
+    }
+
+    /**
+     * Calories and sessions per activity across all time, largest first. WHOOP sport names and
+     * logged activity names are merged case-insensitively ("Walking" and "walking" are one row).
+     */
+    fun activityTotals(): List<ActivityStat> = readableDatabase.rawQuery(
+        """SELECT MAX(name), COUNT(*), SUM(kcal), SUM(minutes) FROM (
+               SELECT sport AS name, kcal, COALESCE(minutes, 0) AS minutes FROM whoop_workout
+               UNION ALL SELECT name, kcal, 0 FROM burn
+           ) GROUP BY LOWER(name) ORDER BY SUM(kcal) DESC""",
+        null,
+    ).use { c -> buildList { while (c.moveToNext()) add(ActivityStat(c.getString(0), c.getInt(1), c.getDouble(2), c.getInt(3))) } }
 
     private fun createWeightTable(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE weight(time INTEGER PRIMARY KEY, day TEXT NOT NULL, kg REAL NOT NULL, source TEXT NOT NULL)")
@@ -151,8 +184,20 @@ class Store(context: Context) : SQLiteOpenHelper(context, "aarogya.db", null, 5)
         }
 
     fun whoopWorkouts(day: LocalDate): List<WhoopWorkout> =
-        readableDatabase.rawQuery("SELECT id, start, sport, kcal, strain FROM whoop_workout WHERE day = ? ORDER BY start", arrayOf(day.toString())).use { c ->
-            buildList { while (c.moveToNext()) add(WhoopWorkout(c.getString(0), day, c.getLong(1), c.getString(2), c.getDouble(3), if (c.isNull(4)) null else c.getDouble(4))) }
+        readableDatabase.rawQuery(
+            "SELECT id, start, sport, kcal, strain, minutes, avg_hr, distance_m FROM whoop_workout WHERE day = ? ORDER BY start", arrayOf(day.toString()),
+        ).use { c ->
+            buildList {
+                while (c.moveToNext()) add(
+                    WhoopWorkout(
+                        c.getString(0), day, c.getLong(1), c.getString(2), c.getDouble(3),
+                        strain = if (c.isNull(4)) null else c.getDouble(4),
+                        minutes = if (c.isNull(5)) null else c.getInt(5),
+                        avgHeartRate = if (c.isNull(6)) null else c.getInt(6),
+                        distanceMeters = if (c.isNull(7)) null else c.getDouble(7),
+                    )
+                )
+            }
         }
 
     /** Replaces WHOOP data for the synced days (re-syncing a day overwrites it). */
@@ -165,6 +210,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "aarogya.db", null, 5)
                 }, SQLiteDatabase.CONFLICT_REPLACE)
                 for (w in workouts) insertWithOnConflict("whoop_workout", null, ContentValues().apply {
                     put("id", w.id); put("day", w.day.toString()); put("start", w.start); put("sport", w.sport); put("kcal", w.kcal); put("strain", w.strain)
+                    put("minutes", w.minutes); put("avg_hr", w.avgHeartRate); put("distance_m", w.distanceMeters)
                 }, SQLiteDatabase.CONFLICT_REPLACE)
                 setTransactionSuccessful()
             } finally {

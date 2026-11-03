@@ -54,20 +54,29 @@ object WhoopParser {
                 val score = r.optJSONObject("score") ?: continue
                 if (!score.has("kilojoule") || score.isNull("kilojoule")) continue
                 val start = Instant.parse(r.getString("start"))
+                val end = r.optString("end").takeIf { it.isNotEmpty() && it != "null" }?.let(Instant::parse)
                 add(
                     WhoopWorkout(
                         id = r.get("id").toString(),
                         day = start.atZone(zone).toLocalDate(),
                         start = start.toEpochMilli(),
-                        sport = r.optString("sport_name").ifEmpty { "Workout" }.replace('-', ' ').replace('_', ' ')
-                            .replaceFirstChar { it.uppercase() },
+                        sport = sportName(r.optString("sport_name")),
                         kcal = score.getDouble("kilojoule") / KJ_PER_KCAL,
                         strain = score.optDouble("strain").takeUnless { it.isNaN() },
+                        minutes = end?.let { Duration.between(start, it).toMinutes().toInt() }?.takeIf { it > 0 },
+                        avgHeartRate = score.optInt("average_heart_rate").takeIf { it > 0 },
+                        distanceMeters = score.optDouble("distance_meter").takeIf { !it.isNaN() && it > 0 },
                     )
                 )
             }
         }
         return Page(items, root.optString("next_token").takeIf { it.isNotEmpty() && it != "null" })
+    }
+
+    /** "functional_fitness" -> "Functional fitness", "" -> "Workout" (WHOOP's generic activity). */
+    fun sportName(raw: String): String {
+        val name = raw.trim().replace('-', ' ').replace('_', ' ').lowercase()
+        return if (name.isEmpty() || name == "activity") "Workout" else name.replaceFirstChar { it.uppercase() }
     }
 
     /** Several cycles can land on one date (e.g. a split night); their burn adds up. */

@@ -60,6 +60,9 @@ class WhoopParserTest {
         assertEquals("Running", w.sport)
         assertEquals(LocalDate.of(2022, 4, 23), w.day) // 21:25 local on Apr 23
         assertEquals(375.08, w.kcal, 0.01)
+        assertEquals(480, w.minutes)          // 02:25 -> 10:25
+        assertEquals(123, w.avgHeartRate)
+        assertEquals(null, w.distanceMeters)  // not in this sample
     }
 
     @Test fun travelKeepsCyclesOnTheTrackingZonesDay() {
@@ -70,6 +73,23 @@ class WhoopParserTest {
         """.trimIndent()
         assertEquals(LocalDate.of(2026, 10, 30), WhoopParser.cycles(json, zone = CHICAGO).items.single().day)
         assertEquals(LocalDate.of(2026, 10, 31), WhoopParser.cycles(json, zone = java.time.ZoneId.of("Asia/Kolkata")).items.single().day)
+    }
+
+    @Test fun readsDistanceAndNamesSports() {
+        val json = """
+            {"records": [{"id": "a", "start": "2026-11-01T23:00:00Z", "end": "2026-11-01T23:52:00Z", "timezone_offset": "-06:00",
+              "sport_name": "badminton", "score_state": "SCORED",
+              "score": {"strain": 11.2, "average_heart_rate": 138, "kilojoule": 1715.4, "distance_meter": 3120.5}}]}
+        """.trimIndent()
+        val w = WhoopParser.workouts(json, zone = CHICAGO).items.single()
+        assertEquals("Badminton", w.sport)
+        assertEquals(52, w.minutes)
+        assertEquals(138, w.avgHeartRate)
+        assertEquals(3120.5, w.distanceMeters!!, 1e-9)
+        assertEquals(410.0, w.kcal, 0.1)
+        assertEquals("Functional fitness", WhoopParser.sportName("functional_fitness"))
+        assertEquals("Workout", WhoopParser.sportName(""))
+        assertEquals("Workout", WhoopParser.sportName("activity"))
     }
 
     @Test fun mergesCyclesOnTheSameDay() {
