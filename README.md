@@ -4,6 +4,33 @@ An Android app for tracking **calories in vs. calories out**, with a daily analy
 Food can be logged from photos, typed descriptions or a built-in food list; calories burned come from
 WHOOP, a base-burn estimate, or activities you log yourself. Much of the AI runs on the phone.
 
+## Screenshots
+
+Captured on the Android emulator with sample data.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/day.png" width="250" alt="Day screen with calories left, in, out and daily analysis"><br><sub><b>Day</b>: calories left, in / out / net and daily analysis</sub></td>
+    <td align="center"><img src="docs/screenshots/day-meals.png" width="250" alt="Day screen meals and WHOOP activities"><br><sub><b>Day</b>: meals and WHOOP activities</sub></td>
+    <td align="center"><img src="docs/screenshots/add-food.png" width="250" alt="Add food sheet with parsed items and unit pickers"><br><sub><b>Add food</b>: typed meal split into items, with units</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/foods.png" width="250" alt="Foods tab listing every logged food with Gemini, LLM and Manual tags"><br><sub><b>Foods</b>: everything logged, tagged by how it was classified</sub></td>
+    <td align="center"><img src="docs/screenshots/trends-week.png" width="250" alt="Trends this week with 7-day chart and daily balance"><br><sub><b>Trends</b>: this week</sub></td>
+    <td align="center"><img src="docs/screenshots/trends-overall.png" width="250" alt="Trends overall with estimated weight change and weekly in vs out"><br><sub><b>Trends</b>: overall</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/trends-overall2.png" width="250" alt="Overall food types and activities breakdown"><br><sub><b>Trends</b>: food types and activities</sub></td>
+    <td align="center"><img src="docs/screenshots/chat.png" width="250" alt="On-device chat answering questions from health data"><br><sub><b>Chat</b>: answers from your data, on-device</sub></td>
+    <td align="center"><img src="docs/screenshots/weight-pin.png" width="250" alt="Weight tab locked behind a PIN"><br><sub><b>Weight</b>: protected by a PIN</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/settings.png" width="250" alt="Settings with meal reminders, time zone, WHOOP and Gemini"><br><sub><b>Settings</b>: reminders, time zone, WHOOP, Gemini</sub></td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
 ## Features
 
 **Logging food**
