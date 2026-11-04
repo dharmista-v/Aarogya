@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home-screen widget, matching the app's light theme. -->
+    <color name="widget_bg">#FFEDF1EC</color>
+    <color name="widget_text">#FF191C1A</color>
+    <color name="widget_muted">#FF52635A</color>
+    <color name="widget_deficit">#FF2E7D5B</color>
+    <color name="widget_surplus">#FFB4582A</color>
+</resources>

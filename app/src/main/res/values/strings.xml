@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Aarogya</string>
+    <string name="widget_description">Today\'s calorie balance: in minus out</string>
+    <string name="widget_unit">kcal</string>
+    <string name="widget_sample_label">Deficit today</string>
+    <string name="widget_sample_value">450</string>
+    <string name="widget_sample_detail">In 1,650 · Out 2,100</string>
 </resources>

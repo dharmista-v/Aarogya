@@ -59,6 +59,7 @@ Captured on the Android emulator with sample data.
 - Meal reminders that only fire if that meal isn't logged yet.
 - One tracking time zone (default US Central) so travel doesn't shift days.
 - Status dots for WHOOP and Google Health next to the app name.
+- A home-screen widget with today's deficit or surplus (in minus out), updated as you log.
 
 ## Building
 

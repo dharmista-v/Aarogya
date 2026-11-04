@@ -6,6 +6,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import com.example.aarogya.classify.ClassifyWorker
 import com.example.aarogya.classify.FoodClassifier
@@ -20,6 +21,7 @@ import com.example.aarogya.vision.FoodPhotos
 import com.example.aarogya.googlehealth.GoogleHealth
 import com.example.aarogya.reminders.MealReminders
 import com.example.aarogya.whoop.Whoop
+import com.example.aarogya.widget.BalanceWidget
 
 class AarogyaApp : Application() {
     val store by lazy { Store(this) }
@@ -43,6 +45,10 @@ class AarogyaApp : Application() {
         appScope.launch(Dispatchers.IO) { MealReminders.scheduleAll(this@AarogyaApp) }
         // Resume classifying anything still pending from a previous session.
         appScope.launch(Dispatchers.IO) { if (store.pendingFoods().isNotEmpty()) ClassifyWorker.enqueue(this@AarogyaApp) }
+        // Keep the home-screen widget in step with every food, activity, WHOOP or settings change.
+        appScope.launch(Dispatchers.IO) {
+            combine(store.version, prefs.state) { _, _ -> }.collect { BalanceWidget.refresh(this@AarogyaApp) }
+        }
         // Sync WHOOP and Google Health every time the app comes to the foreground (not on rotation or in-app navigation).
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
